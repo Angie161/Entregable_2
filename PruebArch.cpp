@@ -33,6 +33,7 @@ void ImprimirDatos(Datos usuario){
 /**********************/
 /*** Funciones hash ***/
 /**********************/
+const float A = (sqrt(5) - 1) / 2;
 
 // Método de la división
 // k: clave a la cual aplicaremos la función hash
