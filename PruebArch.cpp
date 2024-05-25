@@ -7,8 +7,6 @@
 #include <cmath>
 #include <chrono>
 
-#include <random>
-
 using namespace std;
 using namespace std::chrono;
 
@@ -73,19 +71,24 @@ Datos transStruct(ifstream& archivo){
 /*** Funciones hash ***/
 /**********************/
 
-// Método de la división
-// k: clave a la cual aplicaremos la función hash
+// Método sdbm
+// key: clave Name
 // n: tamaño de la tabla hash
-int h1(int k, int n)
+int hAuxName(const string &key, int n)
 {
-    return k % n;
+	unsigned long hash = 0;
+    for (char c : key) {
+        hash = c + (hash << 6) + (hash << 16) - hash;
+    }
+
+    return static_cast<int>(hash % n);
 }
 
 // Método de la multiplicación
-// k: clave a la cual aplicaremos la función hash
+// k: clave Id
 // n: tamaño de la tabla hash
 const float A = (sqrt(5) - 1) / 2;
-int h2(int k, int n)
+int hAuxId(double k, int n)
 {
     float a = (float)k * A;
     a -= (int)a; // Esta línea implementa la operación módulo 1 (%1)
@@ -93,28 +96,29 @@ int h2(int k, int n)
     return n * a;
 }
 
-//Función hash para el User Name.
-int tableSize;
-int hashName(const string &key)
+//Función hash para el User Name. Obtenido de laboratorio.
+int hashName(const string &key, int n)
+{
+    unsigned int aux = 2166136261;
+    unsigned int aux2 = 16777619;
+    unsigned int hash = aux;
+    for (int i = 0; i < key.length(); ++i)
     {
-        unsigned int aux = 2166136261;
-        unsigned int aux2 = 16777619;
-        unsigned int hash = aux;
-        for (int i = 0; i < key.length(); ++i)
-        {
-            hash ^= key[i];
-            hash *= aux2;
-        }
-        return hash % tableSize;
+        hash ^= key[i];
+        hash *= aux2;
     }
+    return hash % n;
+}
 
 //Función hash para el User ID. Basado en el método Mid-Square
-int hashId(double input) {
-long long key = static_cast<long long>(input * 100); // Multiplica por 100 para no perder decimales
-key = key * key;
-key = key / 10000;
-key = key % 100000000;
-return static_cast<int>(key);
+int hashId(double k, int n) 
+{
+	k = k * k;
+	k = k / 10000;
+	int intK = static_cast<int>(k);
+	intK = intK % n;
+
+	return intK;
 }
 
 
@@ -123,34 +127,58 @@ return static_cast<int>(key);
 /****************************************************/
 
 // Linear probing
-// k: clave a la cual aplicaremos la función hash
+// datos: struct de donde sacaremos la clave
 // n: tamaño de la tabla hash
 // i: número del intento
-int linear_probing(int k, int n, int i)
+// type: identificador del tipo de tabla hash que tenemos. 1)Clave ID, 2)Clave Name.
+int linear_probing(Datos datos, int n, int i, int type)
 {
-    // Utilizando el método de la division
-    return (h1(k, n) + i) % n;
+	if(type == 1){
+    	return (hashId(datos.userId, n) + i) % n;
+	}
+	else if(type == 2){
+		return (hashName(datos.userName, n) + i) % n;
+	}
+	else{
+		cout << "Error: No se reconoce el tipo de clave para el linear_probing" << endl;
+	}
+    
 }
 
 // Quadratic probing
-// k: clave a la cual aplicaremos la función hash
+// datos: struct de donde sacaremos la clave
 // n: tamaño de la tabla hash
 // i: número del intento
-int quadratic_probing(int k, int n, int i)
+// type: identificador del tipo de tabla hash que tenemos. 1)Clave ID, 2)Clave Name.
+int quadratic_probing(Datos datos, int n, int i, int type)
 {
-    // Utilizando el método de la division
-    return (h1(k, n) + i + 2*i*i) % n;
+	if(type == 1){
+    	return (hashId(datos.userId, n) + i + 2*i*i) % n;
+	}
+	else if(type == 2){
+		return (hashName(datos.userName, n) + i + 2*i*i) % n;
+	}
+	else{
+		cout << "Error: No se reconoce el tipo de clave para el quadratic_probing" << endl;
+	} 
 }
 
 // Double hashing
-// k: clave a la cual aplicaremos la función hash
+// datos: struct de donde sacaremos la clave
 // n: tamaño de la tabla hash
 // i: número del intento
-int double_hashing(int k, int n, int i)
+// type: identificador del tipo de tabla hash que tenemos. 1)Clave ID, 2)Clave Name.
+int double_hashing(Datos datos, int n, int i, int type)
 {
-    // Utilizando como primer método el método de la division y luego el
-    // método de la multiplicacion
-    return (h1(k, n) + i * (h2(k, n) + 1)) % n;
+	if(type == 1){
+    	return (hashId(datos.userId, n) + i * (hAuxId(datos.userId, n) + 1)) % n;
+	}
+	else if(type == 2){
+		return (hashName(datos.userName, n) + i * (hAuxName(datos.userName, n) + 1)) % n;
+	}
+	else{
+		cout << "Error: No se reconoce el tipo de clave para el double_hashing" << endl;
+	}
 }
 
 /**********************/
@@ -160,36 +188,66 @@ class HashTable
 {
 public:
     int size;
-    int *table;
-    int (*hashing_method)(int, int, int);
+    Datos *table;
+    Datos nulo = {"-1", -1, "-1", -1, -1, -1, "-1"};
+    int tipo;
+    int (*hashing_method)(Datos, int, int, int);
 
-    HashTable(int size, int (*hashing_method)(int, int, int)) : size(size), hashing_method(hashing_method)
+    HashTable(int size, int type, int (*hashing_method)(Datos, int, int, int)) : size(size), hashing_method(hashing_method)
     {
-        table = new int[size];
+        table = new Datos[size];
+        tipo = type;
         for (int i = 0; i < size; i++)
         {
-            table[i] = -1;
+            table[i] = nulo;
         }
     }
 
-    void insert(int key)
+    void insert(Datos datos)
     {
         int i = 0;
-        while (table[hashing_method(key, size, i)] != -1)
-        {
-            i++;
+        if(tipo == 1){
+        	while (table[hashing_method(datos, size, i, tipo)].userId != -1)
+	        {
+	            i++;
+	        }
+	        table[hashing_method(datos, size, i, tipo)] = datos;
         }
-        table[hashing_method(key, size, i)] = key;
+
+        else if(tipo == 2){
+        	while (table[hashing_method(datos, size, i, tipo)].userName != "-1")
+	        {
+	            i++;
+	        }
+	        table[hashing_method(datos, size, i, tipo)] = datos;
+        }
+        else{
+        	cout << "Error al reconocer tipo de dato" << endl;
+        }
+        
     }
 
-    bool search(int key)
+    bool search(Datos datos)
     { 
         int i = 0;
-        while (table[hashing_method(key, size, i)] != key && table[hashing_method(key, size, i)] != -1)
-        {
-            i++;
+        if(tipo == 1){
+        	while (table[hashing_method(datos, size, i, tipo)].userId != datos.userId && table[hashing_method(datos, size, i, tipo)].userId != -1)
+	        {
+	            i++;
+	        }
+	        return table[hashing_method(datos, size, i, tipo)].userId == datos.userId;
         }
-        return table[hashing_method(key, size, i)] == key;
+        else if(tipo == 2){
+        	while (table[hashing_method(datos, size, i, tipo)].userName != datos.userName && table[hashing_method(datos, size, i, tipo)].userName != "-1")
+	        {
+	            i++;
+	        }
+	        return table[hashing_method(datos, size, i, tipo)].userName == datos.userName;
+        }
+        else{
+        	cout << "Error al reconocer tipo de dato" << endl;
+        }
+        
     }
 };
 
@@ -199,10 +257,10 @@ public:
 /**********************/
 int main(int argc, char const *argv[]){
 	int N = 20;
-  	HashTable ht_linear(N, linear_probing);
-    HashTable ht_quadratic(N, quadratic_probing);
-    HashTable ht_double(N, double_hashing);
-  	Datos datos;
+	Datos datos;
+  	HashTable ht_linear(N, 1, linear_probing);
+    HashTable ht_quadratic(N, 1, quadratic_probing);
+    HashTable ht_double(N, 1, double_hashing);
 
 	ifstream file("universities_followers.csv");
 	if(!file.is_open()){
@@ -217,7 +275,7 @@ int main(int argc, char const *argv[]){
 
         //Calculo de tiempo de inserción: PRUEBA PARA ID
         auto start = chrono::high_resolution_clock::now();
-	    ht_linear.insert(datos.userId);
+	    ht_linear.insert(datos);
 	    auto end = chrono::high_resolution_clock::now();
 	    auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
 
