@@ -256,11 +256,11 @@ public:
 /******** Main ********/
 /**********************/
 int main(int argc, char const *argv[]){
-	int N = 20;
 	Datos datos;
-  	HashTable ht_linear(N, 1, linear_probing);
-    HashTable ht_quadratic(N, 1, quadratic_probing);
-    HashTable ht_double(N, 1, double_hashing);
+
+	//INSERCIONES PARA ID
+  	HashTable ht_linear_ID(20, 1, linear_probing);
+  	HashTable ht_linear_Name(20, 2, linear_probing);
 
 	ifstream file("universities_followers.csv");
 	if(!file.is_open()){
@@ -272,17 +272,24 @@ int main(int argc, char const *argv[]){
 		datos=transStruct(file);
 
         //Calculo de tiempo de inserción: PRUEBA PARA ID
-        auto start = chrono::high_resolution_clock::now();
-	    ht_linear.insert(datos);
-	    auto end = chrono::high_resolution_clock::now();
-	    auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        auto startID = chrono::high_resolution_clock::now();
+	    ht_linear_ID.insert(datos);
+	    auto endID = chrono::high_resolution_clock::now();
+	    auto durationID = chrono::duration_cast<chrono::nanoseconds>(endID - startID).count();
+
+	    //Calculo de tiempo de inserción: PRUEBA PARA NAME
+        auto startNAME = chrono::high_resolution_clock::now();
+	    ht_linear_Name.insert(datos);
+	    auto endNAME = chrono::high_resolution_clock::now();
+	    auto durationNAME = chrono::duration_cast<chrono::nanoseconds>(endNAME - startNAME).count();
 
 	}
 	file.close();
     std::cout << "Datos procesados correctamente" << std::endl;
 
     //BUSQUEDA PARA ID
-    bool guardado;
+    bool guardadoID;
+    bool guardadoNAME;
     ifstream fileAux("universities_followers.csv");
 	if(!fileAux.is_open()){
 		cout<<"Error al abrir el archivo"<<endl;
@@ -292,19 +299,34 @@ int main(int argc, char const *argv[]){
 		datos= transStruct(fileAux);
 
         //Calculo de tiempo de busqueda: PARA ID
-        auto start = chrono::high_resolution_clock::now();
-	    guardado = ht_linear.search(datos);
-	    auto end = chrono::high_resolution_clock::now();
-	    auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+        auto startID = chrono::high_resolution_clock::now();
+	    guardadoID = ht_linear_ID.search(datos);
+	    auto endID = chrono::high_resolution_clock::now();
+	    auto durationID = chrono::duration_cast<chrono::nanoseconds>(endID - startID).count();
 
-	    if(guardado){
+	    if(guardadoID){
 	    	cout << "La clave: " << datos.userId <<"sí se encuentra almacenada"<< endl;
 	    }
 	    else{
-	    	cout << "El dato no fue encontrado"<< endl;
+	    	cout << "El dato no fue encontrado en la tabla id"<< endl;
+	    }
+
+	    //Calculo de tiempo de busqueda: PARA NAME
+        auto startNAME = chrono::high_resolution_clock::now();
+	    guardadoNAME = ht_linear_Name.search(datos);
+	    auto endNAME = chrono::high_resolution_clock::now();
+	    auto durationNAME = chrono::duration_cast<chrono::nanoseconds>(endNAME - startNAME).count();
+
+	    if(guardadoNAME){
+	    	cout << "La clave: " << datos.userName <<"sí se encuentra almacenada \n"<< endl;
+	    }
+	    else{
+	    	cout << "El dato no fue encontrado en la tabla name \n"<< endl;
 	    }
 	}
 	fileAux.close();
+
+
 
 
 	return 0;
