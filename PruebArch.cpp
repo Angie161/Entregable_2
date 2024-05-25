@@ -4,13 +4,19 @@
 #include <string>
 #include <ctime>
 #include <math.h>
+#include <cmath>
+#include <chrono>
+
+#include <random>
 
 using namespace std;
+using namespace std::chrono;
 
 /***************************/
 /*** Almacenaje de Datos ***/
 /***************************/
-struct Datos{
+struct Datos
+{
 	string universidad;
 	double userId;
 	string userName;
@@ -20,7 +26,8 @@ struct Datos{
 	string createdAt;
 };
 
-void ImprimirDatos(Datos usuario){
+void ImprimirDatos(Datos usuario)
+{
 		cout << "Universidad: " << usuario.universidad << endl;
 	    cout << "User ID: " << usuario.userId << endl;
 	    cout << "User Name: " << usuario.userName << endl;
@@ -30,10 +37,41 @@ void ImprimirDatos(Datos usuario){
 	    cout << "Created At: " << usuario.createdAt<< "\n" << endl;
 }
 
+Datos transStruct(ifstream& archivo){
+	Datos datos;
+	string line;
+	getline(archivo, line);
+	istringstream ss(line);
+	string token;
+
+	try {
+    getline(ss, token, ',');
+    datos.universidad = token;
+    getline(ss, token, ',');
+    datos.userId = stod(token);
+    getline(ss, token, ',');
+    datos.userName = token;
+    getline(ss, token, ',');
+    datos.numTweets = stoi(token);
+    getline(ss, token, ',');
+    datos.numAmigos = stoi(token);
+    getline(ss, token, ',');
+    datos.numSeguidos = stoi(token);
+    getline(ss, token, ',');
+    datos.createdAt = token;
+
+    } catch (const std::invalid_argument& e) {
+    	std::cerr << "Error: argumento inválido al convertir a número en la línea: " << line << std::endl;
+    } catch (const std::out_of_range& e) {
+        std::cerr << "Error: número fuera de rango en la línea: " << line << std::endl;
+    }
+
+    return datos;
+}
+
 /**********************/
 /*** Funciones hash ***/
 /**********************/
-const float A = (sqrt(5) - 1) / 2;
 
 // Método de la división
 // k: clave a la cual aplicaremos la función hash
@@ -46,6 +84,7 @@ int h1(int k, int n)
 // Método de la multiplicación
 // k: clave a la cual aplicaremos la función hash
 // n: tamaño de la tabla hash
+const float A = (sqrt(5) - 1) / 2;
 int h2(int k, int n)
 {
     float a = (float)k * A;
@@ -53,6 +92,31 @@ int h2(int k, int n)
 
     return n * a;
 }
+
+//Función hash para el User Name.
+int tableSize;
+int hashName(const string &key)
+    {
+        unsigned int aux = 2166136261;
+        unsigned int aux2 = 16777619;
+        unsigned int hash = aux;
+        for (int i = 0; i < key.length(); ++i)
+        {
+            hash ^= key[i];
+            hash *= aux2;
+        }
+        return hash % tableSize;
+    }
+
+//Función hash para el User ID. Basado en el método Mid-Square
+int hashId(double input) {
+long long key = static_cast<long long>(input * 100); // Multiplica por 100 para no perder decimales
+key = key * key;
+key = key / 10000;
+key = key % 100000000;
+return static_cast<int>(key);
+}
+
 
 /****************************************************/
 /*** Métodos de Open addressing o hashing cerrado ***/
@@ -89,7 +153,11 @@ int double_hashing(int k, int n, int i)
     return (h1(k, n) + i * (h2(k, n) + 1)) % n;
 }
 
-class HashTable{
+/**********************/
+/***** Tabla hash *****/
+/**********************/
+class HashTable
+{
 public:
     int size;
     int *table;
@@ -125,11 +193,17 @@ public:
     }
 };
 
-int main(int argc, char const *argv[]){
 
-	/****************************************************/
-	/****Apertura y tranformación de datos a structs*****/
-	/****************************************************/
+/**********************/
+/******** Main ********/
+/**********************/
+int main(int argc, char const *argv[]){
+	int N = 20;
+  	HashTable ht_linear(N, linear_probing);
+    HashTable ht_quadratic(N, quadratic_probing);
+    HashTable ht_double(N, double_hashing);
+  	Datos datos;
+
 	ifstream file("universities_followers.csv");
 	if(!file.is_open()){
 		cout<<"Error al abrir el archivo"<<endl;
@@ -137,40 +211,16 @@ int main(int argc, char const *argv[]){
 
 	string line;
 	getline(file, line);
+
 	for(int i=0; i<10; i++){
-		getline(file, line);
-		istringstream ss(line);
-    	string token;
+		datos=transStruct(file);
 
-    	Datos datos;
-    	try {
-        getline(ss, token, ',');
-        datos.universidad = token;
+        //Calculo de tiempo de inserción: PRUEBA PARA ID
+        auto start = chrono::high_resolution_clock::now();
+	    ht_linear.insert(datos.userId);
+	    auto end = chrono::high_resolution_clock::now();
+	    auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
 
-        getline(ss, token, ',');
-        datos.userId = stod(token);
-
-        getline(ss, token, ',');
-        datos.userName = token;
-
-        getline(ss, token, ',');
-        datos.numTweets = stoi(token);
-
-        getline(ss, token, ',');
-        datos.numAmigos = stoi(token);
-
-        getline(ss, token, ',');
-        datos.numSeguidos = stoi(token);
-
-        getline(ss, token, ',');
-        datos.createdAt = token;
-
-        ImprimirDatos(datos);
-        } catch (const std::invalid_argument& e) {
-        	std::cerr << "Error: argumento inválido al convertir a número en la línea: " << line << std::endl;
-        } catch (const std::out_of_range& e) {
-            std::cerr << "Error: número fuera de rango en la línea: " << line << std::endl;
-        }
 	}
 	file.close();
     std::cout << "Datos procesados correctamente" << std::endl;
