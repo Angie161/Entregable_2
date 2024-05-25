@@ -266,10 +266,8 @@ int main(int argc, char const *argv[]){
 	if(!file.is_open()){
 		cout<<"Error al abrir el archivo"<<endl;
 	}
-
 	string line;
 	getline(file, line);
-
 	for(int i=0; i<10; i++){
 		datos=transStruct(file);
 
@@ -282,6 +280,32 @@ int main(int argc, char const *argv[]){
 	}
 	file.close();
     std::cout << "Datos procesados correctamente" << std::endl;
+
+    //BUSQUEDA PARA ID
+    bool guardado;
+    ifstream fileAux("universities_followers.csv");
+	if(!fileAux.is_open()){
+		cout<<"Error al abrir el archivo"<<endl;
+	}
+	getline(fileAux, line);
+	for(int i=0; i<20; i++){
+		datos= transStruct(fileAux);
+
+        //Calculo de tiempo de busqueda: PARA ID
+        auto start = chrono::high_resolution_clock::now();
+	    guardado = ht_linear.search(datos);
+	    auto end = chrono::high_resolution_clock::now();
+	    auto duration = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+
+	    if(guardado){
+	    	cout << "La clave: " << datos.userId <<"sí se encuentra almacenada"<< endl;
+	    }
+	    else{
+	    	cout << "El dato no fue encontrado"<< endl;
+	    }
+	}
+	fileAux.close();
+
 
 	return 0;
 }
