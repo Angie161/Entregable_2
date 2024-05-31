@@ -69,8 +69,8 @@ Datos transStruct(ifstream& archivo){
 
 int main(int argc, char const *argv[])
 {
-	unordered_map<double,Datos> tablaId;
-	unordered_map<string,Datos> tablaName;
+	unordered_map<double,Datos> tablaId(40000);
+	unordered_map<string,Datos> tablaName(40000);
 	Datos datos;
 
 	/****************************************************/
