@@ -113,12 +113,8 @@ int hashName(const string &key, int n)
 //Función hash para el User ID. Basado en el método Mid-Square
 int hashId(double k, int n) 
 {
-	k = k * k;
-	k = k / 10000;
-	int intK = static_cast<int>(k);
-	intK = intK % n;
-
-	return intK;
+	long long intId = static_cast<long long>(k);
+	return intId % n;
 }
 
 
@@ -241,6 +237,10 @@ public:
         	while (table[hashing_method(datos, size, i, tipo)].userName != datos.userName && table[hashing_method(datos, size, i, tipo)].userName != "-1")
 	        {
 	            i++;
+	            if (i >= size) {
+                cout << "Búsqueda de userName excedió el tamaño de la tabla hash" << endl;
+                return false;
+            	}
 	        }
 	        return table[hashing_method(datos, size, i, tipo)].userName == datos.userName;
         }
@@ -259,8 +259,8 @@ int main(int argc, char const *argv[]){
 	Datos datos;
 
 	//INSERCIONES PARA ID
-  	HashTable ht_linear_ID(20, 1, linear_probing);
-  	HashTable ht_linear_Name(20, 2, linear_probing);
+  	HashTable ht_linear_ID(20, 1, double_hashing);
+  	HashTable ht_linear_Name(20, 2, double_hashing);
 
 	ifstream file("universities_followers.csv");
 	if(!file.is_open()){
@@ -318,7 +318,7 @@ int main(int argc, char const *argv[]){
 	    auto durationNAME = chrono::duration_cast<chrono::nanoseconds>(endNAME - startNAME).count();
 
 	    if(guardadoNAME){
-	    	cout << "La clave: " << datos.userName <<"sí se encuentra almacenada \n"<< endl;
+	    	cout << "La clave: " << datos.userName <<"sí se encuentra almacenada\n"<< endl;
 	    }
 	    else{
 	    	cout << "El dato no fue encontrado en la tabla name \n"<< endl;
