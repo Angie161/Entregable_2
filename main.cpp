@@ -40,7 +40,7 @@ private:
     int tableSize;
 
     // Hash
-    int hash(const std::string &key)
+    int hashName(const std::string &key)
     {
         unsigned int aux = 2166136261;
         unsigned int aux2 = 16777619;
@@ -52,13 +52,8 @@ private:
         }
         return hash % tableSize;
     }
-    // Hash para userName
-    int hashUserName(const std::string &userName)
-    {
-        return hash(userName);
-    }
 
-    int hashUserId(double userId)
+    int hashId(double userId)
     {
         long long intId = static_cast<long long>(userId);
         return intId % tableSize;
@@ -72,20 +67,20 @@ public:
     // INSERT USER ID
     void insertUserId(const Datos &data)
     {
-        int index = hashUserId(data.userId);
+        int index = hashId(data.userId);
         table[index].push_back(data);
     }
     // INSERT USER NAME
     void insertUsername(const Datos &data)
     {
-        int index = hashUserName(data.userName);
+        int index = hashName(data.userName);
         table[index].push_back(data);
     }
 
     // SEARCH USER ID
     bool searchUserId(double userId)
     {
-        int index = hashUserId(userId);
+        int index = hashId(userId);
         for (const auto &data : table[index])
         {
             if (data.userId == userId)
@@ -98,7 +93,7 @@ public:
     // SEARCH USER NAME
     bool searchUserName(std::string userName)
     {
-        int index = hashUserName(userName);
+        int index = hashName(userName);
         for (const auto &data : table[index])
         {
             if (data.userName == userName)
