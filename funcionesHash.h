@@ -1,40 +1,40 @@
-#include <cmath>
-#include <list>
-#include <vector>
 #include <iostream>
-#include <map>
+#include <fstream>
+#include <sstream>
 #include <string>
-#include <functional>
-#include "TwitterAccount.h"
+#include <ctime>
+#include <math.h>
+#include <cmath>
+#include <chrono>
 
 #ifndef funcionesHash_H
 #define funcionesHash_H
 
-//Función hash para el User ID.
+//Función hash para el User ID, entrega un entero positivo.
 // k: clave Id.
 // n: tamaño de la tabla hash.
-int hashId(double key, int n) 
+unsigned int hashId(double key, int n) 
 {
 	long long intId = static_cast<long long>(key);
 	return intId % n;
 }
 
-// Función hash auxiliar para el userId, emplea el método de la multiplicación para obtener el indice de guardado para la tabla hash.
+// Función hash auxiliar para el userId, emplea el método de la multiplicación para obtener el indice no negativo de guardado para la tabla hash.
 // k: clave Id.
 // n: tamaño de la tabla hash.
 const float A = (sqrt(5) - 1) / 2;
-int hAuxId(double key, int n)
+unsigned int hAuxId(double key, int n)
 {
     float a = (float)key * A;
-    a -= (int)a; // Esta línea implementa la operación módulo 1 (%1)
+    a -= (int)a;
 
     return n * a;
 }
 
-//Función hash para el User Name.
+//Función hash para el User Name, entrega un entero positivo.
 // key: clave Name.
 // n: tamaño de la tabla hash.
-int hashName(const string &key, int n)
+unsigned int hashName(const string &key, int n)
 {
     unsigned int aux = 2166136261;
     unsigned int aux2 = 16777619;
