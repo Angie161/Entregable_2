@@ -6,9 +6,11 @@
 #include <math.h>
 #include <cmath>
 #include <chrono>
+using namespace std;
 
 #ifndef funcionesHash_H
 #define funcionesHash_H
+
 
 //Función hash para el User ID, entrega un entero positivo.
 // k: clave Id.
