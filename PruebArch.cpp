@@ -71,24 +71,56 @@ Datos transStruct(ifstream& archivo){
 /*** Funciones hash ***/
 /**********************/
 
-// Método sdbm
-// key: clave Name
-// n: tamaño de la tabla hash
-int hAuxName(const string &key, int n)
-{
-	unsigned long hash = 0;
-    for (char c : key) {
-        hash = c + (hash << 6) + (hash << 16) - hash;
+//Famosa función murmurhash3_32 que permite transformar una clave de tipo string en un entero sin signo de 32 bits de largo (unit32_t) 
+uint32_t murmurhash3_32(const uint8_t* key, size_t len, uint32_t seed) {
+    uint32_t h = seed;
+    if (len > 3) {
+        size_t i = len >> 2;
+        do {
+            uint32_t k = *reinterpret_cast<const uint32_t*>(key);
+            key += sizeof(uint32_t);
+            k *= 0xcc9e2d51;
+            k = (k << 15) | (k >> 17);
+            k *= 0x1b873593;
+            h ^= k;
+            h = (h << 13) | (h >> 19);
+            h = h * 5 + 0xe6546b64;
+        } while (--i);
     }
-
-    return static_cast<int>(hash % n);
+    if (len & 3) {
+        size_t i = len & 3;
+        uint32_t k = 0;
+        do {
+            k <<= 8;
+            k |= key[i - 1];
+        } while (--i);
+        k *= 0xcc9e2d51;
+        k = (k << 15) | (k >> 17);
+        k *= 0x1b873593;
+        h ^= k;
+    }
+    h ^= len;
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
 }
+
+unsigned int hAuxName(const std::string &key, int n) {
+    const uint8_t* keyPtr = reinterpret_cast<const uint8_t*>(key.c_str());
+    size_t len = key.length();
+    uint32_t seed = 0x9747b28c; // Valor de semilla aleatorio
+    return murmurhash3_32(keyPtr, len, seed) % n;
+}
+
 
 // Método de la multiplicación
 // k: clave Id
 // n: tamaño de la tabla hash
 const float A = (sqrt(5) - 1) / 2;
-int hAuxId(double k, int n)
+unsigned int hAuxId(double k, int n)
 {
     float a = (float)k * A;
     a -= (int)a; // Esta línea implementa la operación módulo 1 (%1)
@@ -97,7 +129,7 @@ int hAuxId(double k, int n)
 }
 
 //Función hash para el User Name. Obtenido de laboratorio.
-int hashName(const string &key, int n)
+unsigned int hashName(const string &key, int n)
 {
     unsigned int aux = 2166136261;
     unsigned int aux2 = 16777619;
@@ -111,7 +143,7 @@ int hashName(const string &key, int n)
 }
 
 //Función hash para el User ID. Basado en el método Mid-Square
-int hashId(double k, int n) 
+unsigned int hashId(double k, int n) 
 {
 	long long intId = static_cast<long long>(k);
 	return intId % n;
@@ -164,17 +196,16 @@ int quadratic_probing(Datos datos, int n, int i, int type)
 // n: tamaño de la tabla hash
 // i: número del intento
 // type: identificador del tipo de tabla hash que tenemos. 1)Clave ID, 2)Clave Name.
-int double_hashing(Datos datos, int n, int i, int type)
-{
-	if(type == 1){
-    	return (hashId(datos.userId, n) + i * (hAuxId(datos.userId, n) + 1)) % n;
-	}
-	else if(type == 2){
-		return (hashName(datos.userName, n) + i * (hAuxName(datos.userName, n) + 1)) % n;
-	}
-	else{
-		cout << "Error: No se reconoce el tipo de clave para el double_hashing" << endl;
-	}
+int double_hashing(Datos datos, int n, int i, int type) {
+    if (type == 1) {
+        return (hashId(datos.userId, n) + i * (hAuxId(datos.userId, n) + 1)) % n;
+    } else if (type == 2) {
+        // Usamos la función hashName y hAuxName para el sondeo doble
+        return (hashName(datos.userName, n) + i * hAuxName(datos.userName, n)) % n;
+    } else {
+        cout << "Error: No se reconoce el tipo de clave para el double_hashing" << endl;
+        return -1;
+    }
 }
 
 /**********************/
@@ -206,6 +237,7 @@ public:
         	while (table[hashing_method(datos, size, i, tipo)].userId != -1)
 	        {
 	            i++;
+	            
 	        }
 	        table[hashing_method(datos, size, i, tipo)] = datos;
         }
@@ -226,29 +258,46 @@ public:
     bool search(Datos datos)
     { 
         int i = 0;
-        if(tipo == 1){
-        	while (table[hashing_method(datos, size, i, tipo)].userId != datos.userId && table[hashing_method(datos, size, i, tipo)].userId != -1)
-	        {
-	            i++;
-	        }
-	        return table[hashing_method(datos, size, i, tipo)].userId == datos.userId;
-        }
-        else if(tipo == 2){
-        	while (table[hashing_method(datos, size, i, tipo)].userName != datos.userName && table[hashing_method(datos, size, i, tipo)].userName != "-1")
-	        {
-	            i++;
-	            if (i >= size) {
-                cout << "Búsqueda de userName excedió el tamaño de la tabla hash" << endl;
+        int index;
+        if (tipo == 1) {
+        while (true) {
+             index = double_hashing(datos, size, i, tipo);
+            cout << "Intentando indice: " << index << ", userid: " << table[index].userId << endl;
+            if (table[index].userId == datos.userId || table[index].userId == -1) {
+                break;
+            }
+            i++;
+            cout << "Se suma uno a la busqueda" << endl;
+            if (i >= size) {
+                cout << "Busqueda de userId excedio el tamano de la tabla hash" << endl;
                 return false;
-            	}
-	        }
-	        return table[hashing_method(datos, size, i, tipo)].userName == datos.userName;
+            }
         }
-        else{
-        	cout << "Error al reconocer tipo de dato" << endl;
-        }
+        return table[index].userId == datos.userId;
         
-    }
+        }else if (tipo == 2) {
+        while (true) {
+             index = double_hashing(datos, size, i, tipo);
+            cout << "Intentando indice: " << index << ", userName: " << table[index].userName << endl;
+            if (table[index].userName == datos.userName || table[index].userName == "-1") {
+                break;
+            }
+            i++;
+            cout << "Se suma uno a la busqueda" << endl;
+            if (i >= size) {
+                cout << "Busqueda de userName excedio el tamano de la tabla hash" << endl;
+                return false;
+            }
+        }
+        cout << "Se encontro el valor o -1" << endl;
+        return table[index].userName == datos.userName;
+	    } 
+
+	    else {
+	        cout << "Error al reconocer tipo de dato" << endl;
+	    }
+	    return false;
+	}
 };
 
 
@@ -300,29 +349,31 @@ int main(int argc, char const *argv[]){
 
         //Calculo de tiempo de busqueda: PARA ID
         auto startID = chrono::high_resolution_clock::now();
+        cout<<"Se quiere encontrar el userID: "<< datos.userId <<endl;
 	    guardadoID = ht_linear_ID.search(datos);
 	    auto endID = chrono::high_resolution_clock::now();
 	    auto durationID = chrono::duration_cast<chrono::nanoseconds>(endID - startID).count();
 
 	    if(guardadoID){
-	    	cout << "La clave: " << datos.userId <<"sí se encuentra almacenada"<< endl;
+	    	cout << "La clave: " << datos.userId <<"sí se encuentra almacenada\n"<< endl;
 	    }
 	    else{
-	    	cout << "El dato no fue encontrado en la tabla id"<< endl;
+	    	cout << "El dato no fue encontrado en la tabla id \n"<< endl;
 	    }
 
 	    //Calculo de tiempo de busqueda: PARA NAME
-        auto startNAME = chrono::high_resolution_clock::now();
-	    guardadoNAME = ht_linear_Name.search(datos);
-	    auto endNAME = chrono::high_resolution_clock::now();
-	    auto durationNAME = chrono::duration_cast<chrono::nanoseconds>(endNAME - startNAME).count();
+        //auto startNAME = chrono::high_resolution_clock::now();
+        //cout<<"Se quiere encontrar el userName: "<< datos.userName <<endl;
+	    //guardadoNAME = ht_linear_Name.search(datos);
+	    //auto endNAME = chrono::high_resolution_clock::now();
+	    //auto durationNAME = chrono::duration_cast<chrono::nanoseconds>(endNAME - startNAME).count();
 
-	    if(guardadoNAME){
-	    	cout << "La clave: " << datos.userName <<"sí se encuentra almacenada\n"<< endl;
-	    }
-	    else{
-	    	cout << "El dato no fue encontrado en la tabla name \n"<< endl;
-	    }
+	    //if(guardadoNAME){
+	    //	cout << "La clave: " << datos.userName <<"sí se encuentra almacenada\n"<< endl;
+	    //}
+	    //else{
+	    //	cout << "El dato no fue encontrado en la tabla name \n"<< endl;
+	    //}
 	}
 	fileAux.close();
 
